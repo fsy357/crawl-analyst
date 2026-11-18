@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>网页数据采集与分析 · Crawl Analyst</title>
+<style>
+  :root{
+    --bg:#efe9dc; --panel:#fbf8f0; --ink:#151f1b; --muted:#6f6b5c;
+    --line:#e0d8c6; --hair:#d8cfba; --accent:#0d5a4a; --accent-deep:#0a4438;
+    --accent-soft:#e6ede4; --warn:#9c3b22; --ok:#0d5a4a;
+    --mono:"SFMono-Regular",Consolas,"Liberation Mono",monospace;
+  }
+  *{box-sizing:border-box}
+  html{background:#f1eadb}
+  body{margin:0;color:var(--ink);background-color:#f1eadb;
+       background-image:radial-gradient(125% 75% at 50% -12%, #fbf7ea 0%, #f5efe1 48%, #f0e9d8 100%);
+       background-repeat:no-repeat;background-attachment:fixed;
+       font-family:"Segoe UI","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+       font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1000px;margin:0 auto;padding:44px 22px 80px}
+
+  /* 顶部 */
+  .top{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;
+       padding-bottom:18px;border-bottom:1px solid var(--hair);margin-bottom:28px;flex-wrap:wrap}
+  .brand{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#8a8474;font-weight:600}
+  h1{font-size:32px;line-height:1.18;margin:10px 0 8px;letter-spacing:-1px;font-weight:700}
+  .lead{color:#6f6b5c;font-size:13.5px;max-width:560px}
+  .health{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:7px;white-space:nowrap}
+  .health i{width:7px;height:7px;border-radius:50%;background:#b9c3c1;display:inline-block}
+  .health i.ok{background:var(--ok)} .health i.err{background:var(--warn)}
+
+  /* 面板 */
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:24px;
+        margin-bottom:14px;box-shadow:0 1px 2px rgba(43,35,20,.04)}
+  .lbl{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#8a8474;margin-bottom:7px;display:block}
+  input[type=text]{width:100%;border:1px solid var(--hair);border-radius:4px;padding:12px 13px;
+       font-family:var(--mono);font-size:13px;color:var(--ink);background:#fffefb;outline:none;
+       transition:.15s}
+  input[type=text]:focus{border-color:#b9c9bd;background:#fff;
+       box-shadow:0 0 0 3px rgba(13,90,74,.09)}
+  input::placeholder{color:#a8a293}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .hint{font-size:12px;color:var(--muted);margin-top:9px}
+  .chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}
+  .chips .pre{font-size:11px;color:#9c9686;align-self:center;margin-right:2px}
+  .chip{border:1px solid var(--hair);background:#f7f2e6;color:#6f6b5c;border-radius:99px;
+        padding:5px 12px;font-size:12px;cursor:pointer;transition:.15s}
+  .chip:hover{border-color:#b9c9bd;color:var(--accent);background:#fffefb}
+
+  .btn{border:1px solid var(--accent);background:var(--accent);color:#fdfcf7;border-radius:4px;
+       padding:11px 22px;font-size:13px;cursor:pointer;font-weight:500;transition:.15s;
+       box-shadow:0 1px 2px rgba(13,90,74,.18)}
+  .btn:hover{background:var(--accent-deep);border-color:var(--accent-deep)}
+  .btn.ghost{background:#fbf8f0;color:var(--accent);box-shadow:none}
+  .btn.ghost:hover{background:var(--accent-soft)}
+  .btn.sm{padding:5px 11px;font-size:12px}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  select{border:1px solid var(--hair);border-radius:4px;padding:6px 9px;font-size:12px;background:#fffefb;color:var(--ink)}
+
+  /* 说明折叠 */
+  details.note{margin-top:16px;border-top:1px dashed var(--line);padding-top:14px}
+  summary{cursor:pointer;font-size:12.5px;color:var(--accent);font-weight:500;list-style:none}
+  summary::-webkit-details-marker{display:none}
+  summary:before{content:"＋ ";font-weight:400}
+  details[open] summary:before{content:"－ "}
+  .note-body{margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .nb{border:1px solid var(--line);border-radius:4px;padding:13px 15px;background:#f7f2e6}
+  .nb h4{margin:0 0 6px;font-size:12px;letter-spacing:.05em;color:var(--ink)}
+  .nb p{margin:0;font-size:12px;color:var(--muted);line-height:1.7}
+  .nb code{font-family:var(--mono);font-size:11.5px;background:#efe8d7;padding:1px 5px;border-radius:2px;color:#3a4a42}
+
+  /* 状态 */
+  .status{display:flex;align-items:center;gap:9px;margin-top:20px;padding-top:18px;border-top:1px solid #efe8d8;font-size:12.5px;color:#6f6b5c}
+  .dot{width:7px;height:7px;border-radius:50%;background:#b9c3c1}
+  .dot.run{background:#c98a1b;animation:pulse 1.2s infinite}
+  .dot.ok{background:var(--ok)} .dot.err{background:var(--warn)}
+  @keyframes pulse{0%{opacity:.35}50%{opacity:1}100%{opacity:.35}}
+  .log{background:#111a1c;color:#a9bab6;border-radius:3px;padding:11px 13px;font-family:var(--mono);
+       font-size:11.5px;line-height:1.7;max-height:150px;overflow:auto;margin-top:12px;display:none}
+
+  /* 结果 */
+  .h2{font-size:13px;font-weight:600;letter-spacing:.02em;margin:0 0 14px;
+      display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+  .h2 em{font-style:normal;font-weight:400;color:var(--muted);font-size:11.5px;letter-spacing:0}
+  .meta{display:flex;gap:6px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);margin-bottom:14px}
+  .tag{display:inline-block;padding:2px 8px;border-radius:2px;font-size:11px;background:var(--accent-soft);color:var(--accent)}
+  .tag.gray{background:#f0ead9;color:#7a7464;font-family:var(--mono)}
+  .summary{white-space:pre-wrap;font-size:13px;color:#2a332e;line-height:1.9;
+           border-left:2px solid #cfdcc9;padding:2px 0 2px 15px}
+  .goals{display:flex;gap:7px;flex-wrap:wrap}
+  .goal{border:1px solid var(--hair);border-radius:4px;padding:7px 12px;font-size:12px;background:#fffefb;cursor:pointer;color:#6f6b5c;transition:.15s}
+  .goal:hover{border-color:#b9c9bd;color:var(--accent)}
+  .goal.act{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+  .grid-charts{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+  .chart{border:1px solid var(--line);border-radius:4px;overflow:hidden;background:#fffefb}
+  .chart img{width:100%;display:block}
+  .chart .bar{padding:7px 10px;font-size:11.5px;color:var(--muted);border-top:1px solid var(--line);
+              display:flex;justify-content:space-between;gap:8px}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:#7a7464;font-weight:500;font-size:11px;letter-spacing:.04em;white-space:nowrap;background:#f3ede0}
+  td{max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  td:first-child{font-family:var(--mono);font-size:12px}
+  .empty{color:#a19b8b;font-size:12.5px;padding:18px 0;text-align:center}
+  .hide{display:none}
+  .hist{display:flex;flex-direction:column;gap:2px}
+  .hist .it{display:flex;gap:9px;align-items:center;font-size:12.5px;padding:9px;
+            border-radius:3px;cursor:pointer;border-bottom:1px solid #f1ebdd;flex-wrap:nowrap}
+  .hist .it .tag{flex:none;white-space:nowrap}
+  .hist .it:hover{background:#f6f1e4}
+  .hist .u{color:var(--muted);font-size:11.5px;font-family:var(--mono);overflow:hidden;
+           text-overflow:ellipsis;white-space:nowrap;flex:1}
+  .err{color:var(--warn);font-size:12px;margin-top:10px;line-height:1.7}
+
+  .foot{color:#8e8878;font-size:11.5px;line-height:1.85;border-top:1px solid var(--line);
+        padding-top:18px;margin-top:26px}
+  .foot b{color:#6b6656;font-weight:600}
+  @media(max-width:720px){ .note-body{grid-template-columns:1fr} h1{font-size:24px} .wrap{padding-top:26px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <div>
+      <div class="brand">Crawl · Analyze</div>
+      <h1>网页数据采集与分析</h1>
+      <div class="lead">给一个公开网址，自动抓取、结构化成表、出图或出摘要。</div>
+    </div>
+    <div class="health"><i id="health-dot"></i><span id="health-tag">检测中…</span></div>
+  </div>
+
+  <div class="card">
+    <label class="lbl" for="url">目标网址</label>
+    <input id="url" type="text" placeholder="https://www.bookschina.com/">
+    <div class="chips">
+      <span class="pre">试试</span>
+      <span class="chip" data-u="https://www.bookschina.com/">中图网 · 图书价格</span>
+      <span class="chip" data-u="https://weibo.com/ajax/side/hotSearch">微博热搜 · JSON</span>
+      <span class="chip" data-u="https://api.github.com/search/repositories?q=crawler+language:python&sort=stars&per_page=50">GitHub · star 排行</span>
+      <span class="chip" data-u="https://books.toscrape.com/">books.toscrape · 图书列表</span>
+      <span class="chip" data-u="https://sspai.com/">少数派 · 首页资讯</span>
+      <span class="chip" data-u="https://arxiv.org/list/cs.AI/recent">arXiv · cs.AI</span>
+    </div>
+
+    <div style="margin-top:18px">
+      <label class="lbl" for="goal">分析目标 · 可留空</label>
+      <input id="goal" type="text" placeholder="例如：统计各价格区间的图书数量（留空则由模型按数据结构自动定）">
+    </div>
+
+    <details class="note">
+      <summary>哪些网址能抓、哪些不能？</summary>
+      <div class="note-body">
+        <div class="nb">
+          <h4>可以抓</h4>
+          <p>不需要登录的公开页面：列表页、表格页、分类页、单篇文章；以及任何公开的 JSON 数据接口。</p>
+        </div>
+        <div class="nb">
+          <h4>抓不到</h4>
+          <p>要登录态或人机校验的站点：淘宝、京东、拼多多、小红书、微博页面。抓到的是空壳页，只给摘要不出图。</p>
+        </div>
+        <div class="nb">
+          <h4>JSON 接口是什么</h4>
+          <p>网址里带 <code>/ajax/</code> <code>/api/</code>，浏览器打开满屏是 <code>{ }</code> 的，就是接口。抓它最稳，不用解析页面。</p>
+        </div>
+        <div class="nb">
+          <h4>怎么找接口</h4>
+          <p>打开目标页面 → F12 → 网络 → 筛 Fetch/XHR → 找返回 JSON 的请求 → 标头里抄「请求 URL」。</p>
+        </div>
+      </div>
+    </details>
+
+    <div class="row" style="margin-top:18px">
+      <span class="lbl" style="margin:0">定时监控</span>
+      <select id="minutes">
+        <option value="5">5 分钟</option>
+        <option value="10">10 分钟</option>
+        <option value="30" selected>30 分钟</option>
+        <option value="60">1 小时</option>
+      </select>
+      <button class="btn ghost sm" id="watch">开启</button>
+      <span class="hint" style="margin:0">到点自动重跑，结果进历史</span>
+    </div>
+
+    <div class="status">
+      <span class="dot" id="dot"></span>
+      <span id="status-text">空闲</span>
+      <button class="btn" id="go" style="margin-left:auto">抓取并分析</button>
+    </div>
+    <div class="log" id="log"></div>
+  </div>
+
+  <div id="result" class="hide">
+    <div class="card">
+      <div class="h2">页面信息 <em id="r-adapter"></em></div>
+      <div class="meta" id="r-meta"></div>
+      <div class="h2">内容摘要 <em>由模型基于正文生成</em></div>
+      <div class="summary" id="r-summary"></div>
+      <div class="h2" style="margin-top:18px">分析目标 <em>点任一条重新出图</em></div>
+      <div class="goals" id="r-goals"></div>
+      <div class="err" id="r-err"></div>
+    </div>
+
+    <div class="card">
+      <div class="h2">图表 <em id="r-chart-count"></em></div>
+      <div class="grid-charts" id="r-charts"></div>
+      <div class="empty" id="r-charts-empty">本次没有生成图表</div>
+    </div>
+
+    <div class="card">
+      <div class="h2">抽取到的数据 <em id="r-rows-info"></em></div>
+      <div style="overflow-x:auto"><table><thead id="r-thead"></thead><tbody id="r-tbody"></tbody></table></div>
+      <div class="empty" id="r-rows-empty">没有抽取到结构化数据</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="h2">监控中 <em id="w-count"></em></div>
+    <div class="hist" id="watches"></div>
+    <div class="empty" id="w-empty">暂无监控任务</div>
+  </div>
+
+  <div class="card">
+    <div class="h2">历史记录 <em id="h-count"></em></div>
+    <div class="hist" id="hist"></div>
+    <div class="empty" id="hist-empty">暂无记录</div>
+  </div>
+
+  <div class="foot">
+    <div><b>免责声明</b>　个人技术演示项目，仅用于学习与展示，不做商业数据服务。抓取内容版权归原站点所有，本站不留存内容镜像，仅做临时结构化解析；遵守 robots.txt 与频率限制，不抓取需登录、付费或明确禁止抓取的内容。</div>
+    <div id="sec-info" style="margin-top:5px"></div>
+  </div>
+
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let es = null;
+let current = null;
+
+function setStatus(t, k){ $('status-text').textContent = t; $('dot').className = 'dot' + (k ? ' ' + k : ''); }
+function log(m){
+  const el = $('log'); el.style.display = 'block';
+  el.textContent += `[${new Date().toLocaleTimeString()}] ${m}\n`; el.scrollTop = el.scrollHeight;
+}
+function esc(s){ return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+async function getJSON(u){ const r = await fetch(u); if(!r.ok) throw new Error(`${u} → ${r.status}`); return r.json(); }
+async function postJSON(u, b){
+  const r = await fetch(u, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(b)});
+  const d = await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(d.detail || `${u} → ${r.status}`);
+  return d;
+}
+
+function watch(taskId){
+  if(es){ es.close(); es = null; }
+  $('go').disabled = true;
+  setStatus('抓取中…', 'run');
+  log(`已提交任务 ${taskId}`);
+  es = new EventSource(`/api/stream/${taskId}`);
+  es.onmessage = ev => {
+    const d = JSON.parse(ev.data);
+    if(d.state === 'PROGRESS' && d.meta && d.meta.stage){
+      const s = d.meta.stage;
+      setStatus(s === 'crawling' ? '正在抓取网页…' : '正在分析与出图…', 'run');
+      log(`阶段 → ${s}`);
+    }
+    if(d.state === 'SUCCESS'){
+      es.close(); es = null; $('go').disabled = false;
+      const r = d.result || {};
+      if(!r.ok){ setStatus('抓取失败', 'err'); log('失败：' + (r.error || '未知')); return; }
+      setStatus('完成', 'ok');
+      log(`抓取完成：适配器=${r.adapter} 行数=${r.rows} 图表=${(r.charts||[]).length}`);
+      if(r.chart_error) log('图表说明：' + r.chart_error);
+      showPage(r.page_id);
+      loadHistory();
+    }
+    if(d.state === 'FAILURE'){
+      es.close(); es = null; $('go').disabled = false;
+      setStatus('失败', 'err'); log('失败：' + (d.error || ''));
+    }
+  };
+  es.onerror = () => { log('SSE 中断（检查后端是否在运行）'); es && es.close(); es = null; $('go').disabled = false; };
+}
+
+async function showPage(pageId){
+  try{
+    const p = await getJSON(`/api/page/${pageId}`);
+    current = p;
+    $('result').classList.remove('hide');
+
+    $('r-adapter').textContent = '抽取方式：' + ({table:'表格', items:'重复块', text_blocks:'正文分块', json_api:'JSON 接口', arxiv:'arXiv', generic:'通用解析', failed:'失败'}[p.adapter] || p.adapter);
+    $('r-meta').innerHTML = `
+      <span class="tag">${esc(p.title || '（无标题）')}</span>
+      <span class="tag gray">${esc(p.url)}</span>
+      <span class="tag gray">${p.row_count} 行 / ${p.col_count} 列</span>
+      <span class="tag gray">${esc(p.fetched_at || '')}</span>`;
+
+    $('r-summary').textContent = p.summary || '（无摘要）';
+
+    const g = $('r-goals'); g.innerHTML = '';
+    (p.goals || []).forEach((goal, i) => {
+      const el = document.createElement('div');
+      el.className = 'goal' + (i === 0 ? ' act' : '');
+      el.textContent = goal;
+      el.onclick = () => rerun(goal);
+      g.appendChild(el);
+    });
+    if (!(p.goals || []).length) g.innerHTML = '<span class="empty">没有可用目标</span>';
+
+    $('r-err').textContent = p.error ? ('图表说明：' + p.error) : '';
+    if (p.error && p.error.indexOf('抓到的不是数据页') >= 0) {
+      const b = document.createElement('button');
+      b.className = 'btn sm';
+      b.style.marginLeft = '10px';
+      b.textContent = '换个能抓的站点试试';
+      b.onclick = () => { $('url').value = 'https://www.bookschina.com/'; $('goal').value = '统计不同到手价区间的图书数量'; $('go').click(); };
+      $('r-err').appendChild(b);
+    }
+
+    const box = $('r-charts'); box.innerHTML = '';
+    const charts = p.charts || [];
+    $('r-chart-count').textContent = charts.length ? `${charts.length} 张` : '';
+    $('r-charts-empty').style.display = charts.length ? 'none' : 'block';
+    $('r-charts-empty').textContent = (!charts.length && p.error && p.error.indexOf('抓到的不是数据页') >= 0)
+      ? '本次没有图：目标站点要登录或有风控，抓到的是空壳页'
+      : '本次没有生成图表';
+    charts.forEach((c, i) => {
+      if(!c.image_path) return;
+      const name = c.image_path.split('\\').pop().split('/').pop();
+      const el = document.createElement('div');
+      el.className = 'chart';
+      el.innerHTML = `<img src="/charts/${encodeURIComponent(name)}?t=${Date.now()}" alt="chart">
+        <div class="bar"><span>图 ${i+1}</span><span>${(c.status === true || c.status === 'True') ? '生成成功' : esc(c.status || '')}</span></div>`;
+      box.appendChild(el);
+    });
+
+    const recs = p.records || [];
+    $('r-rows-info').textContent = recs.length ? `前 ${recs.length} 行` : '';
+    $('r-thead').innerHTML = '';
+    $('r-tbody').innerHTML = '';
+    $('r-rows-empty').style.display = recs.length ? 'none' : 'block';
+    if(recs.length){
+      const cols = Object.keys(recs[0]).slice(0, 7);
+      $('r-thead').innerHTML = '<tr>' + cols.map(c => `<th>${esc(c)}</th>`).join('') + '</tr>';
+      recs.forEach(r=>{
+        $('r-tbody').innerHTML += '<tr>' + cols.map(c => `<td title="${esc(r[c])}">${esc(r[c])}</td>`).join('') + '</tr>';
+      });
+    }
+  }catch(e){ log('读取结果失败：' + e.message); }
+}
+
+async function rerun(goal){
+  if(!current) return;
+  try{
+    const d = await postJSON('/api/page', {url: current.url, goal});
+    log('按新目标重跑：' + goal);
+    watch(d.task_id);
+  }catch(e){ log('重跑失败：' + e.message); }
+}
+
+async function loadWatches(){
+  try{
+    const d = await getJSON('/api/watches');
+    const box = $('watches'); box.innerHTML = '';
+    $('w-count').textContent = d.total ? `${d.total} 个` : '';
+    $('w-empty').style.display = d.rows.length ? 'none' : 'block';
+    d.rows.forEach(w=>{
+      const el = document.createElement('div');
+      el.className = 'it';
+      el.style.cursor = 'default';
+      el.innerHTML = `<span class="tag">每 ${w.minutes} 分钟</span>
+        <span class="u">${esc(w.url)}</span>
+        <span class="tag gray">${w.runs} 次</span>
+        <span class="tag gray">下次 ${esc(w.next_run || '—')}</span>
+        <button class="btn ghost sm" data-run="${esc(w.watch_id)}">立即跑</button>
+        <button class="btn ghost sm" data-stop="${esc(w.watch_id)}">停止</button>`;
+      box.appendChild(el);
+    });
+    box.querySelectorAll('[data-stop]').forEach(b=>{
+      b.onclick = async () => {
+        await fetch('/api/watch/' + b.dataset.stop, {method:'DELETE'});
+        log('已停止监控 ' + b.dataset.stop); loadWatches();
+      };
+    });
+    box.querySelectorAll('[data-run]').forEach(b=>{
+      b.onclick = async () => {
+        await fetch(`/api/watch/${b.dataset.run}/run`, {method:'POST'});
+        log('已触发一次，约 1~2 分钟后进历史'); setStatus('监控执行中…', 'run');
+      };
+    });
+  }catch(e){ /* 忽略 */ }
+}
+
+$('watch').onclick = async () => {
+  const url = $('url').value.trim();
+  const goal = $('goal').value.trim();
+  if(!url){ setStatus('请先填写网址', 'err'); return; }
+  try{
+    const d = await postJSON('/api/watch', {url, goal, minutes: Number($('minutes').value)});
+    log(`已开启监控：${d.url} 每 ${d.minutes} 分钟`);
+    setStatus('监控已开启', 'ok');
+    loadWatches();
+  }catch(e){ setStatus('开启监控失败', 'err'); log(e.message); }
+};
+
+async function loadHistory(){
+  try{
+    const d = await getJSON('/api/pages?limit=12');
+    const box = $('hist'); box.innerHTML = '';
+    $('h-count').textContent = d.total ? `${d.total} 次` : '';
+    $('hist-empty').style.display = d.rows.length ? 'none' : 'block';
+    d.rows.forEach(p=>{
+      const el = document.createElement('div');
+      el.className = 'it';
+      el.innerHTML = `<span class="tag">${esc(p.title || '未命名')}</span>
+        <span class="u">${esc(p.url)}</span>
+        <span class="tag gray">${p.row_count} 行</span>
+        <span class="tag gray">${p.snapshots > 1 ? p.snapshots + ' 次' : '1 次'}</span>`;
+      el.onclick = () => { setStatus('已加载历史记录', 'ok'); showPage(p.page_id); };
+      box.appendChild(el);
+    });
+  }catch(e){ /* 忽略 */ }
+}
+
+$('go').onclick = async () => {
+  const url = $('url').value.trim();
+  const goal = $('goal').value.trim();
+  if(!url){ setStatus('请先填写网址', 'err'); return; }
+  try{
+    const d = await postJSON('/api/page', {url, goal});
+    watch(d.task_id);
+  }catch(e){ setStatus('提交失败', 'err'); log(e.message); }
+};
+
+document.querySelectorAll('.chip').forEach(c => {
+  c.onclick = () => { $('url').value = c.dataset.u; };
+});
+
+(async function init(){
+  try{ await getJSON('/api/health'); $('health-tag').textContent = '服务正常'; $('health-dot').className = 'ok'; }
+  catch(e){ $('health-tag').textContent = '后端未运行'; $('health-dot').className = 'err'; }
+  try{
+    const s = await getJSON('/api/security');
+    const pol = {open:'开放模式', demo:'演示模式', allowlist:'白名单'}[s.policy] || s.policy;
+    $('sec-info').textContent = `安全策略 ${pol} · 端口 ${s.allowed_ports.join('/')} · 限流 每 IP ${s.limits.ip_per_min} 次/分、每站点 ${s.limits.host_per_min} 次/分，今日 ${s.limits.day_count}/${s.limits.day_budget} 次`;
+  }catch(e){ /* 忽略 */ }
+  loadHistory();
+  loadWatches();
+  setInterval(loadWatches, 20000);
+})();
+</script>
+</body>
+</html>

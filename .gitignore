@@ -1,0 +1,26 @@
+# 环境与数据（绝不入库）
+venv/
+data/
+logs/
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.ipynb_checkpoints/
+
+# 数据库与产物
+*.duckdb
+*.db
+*.parquet
+*.log
+
+# 本地临时脚本/输出
+_probe_*.py
+_test_*.py
+_shot_*.py
+_*.txt
