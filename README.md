@@ -2,6 +2,10 @@
 
 **English** · 中文（见下）
 
+[![Demo](https://img.shields.io/badge/在线介绍页-点击查看-0d5a4a?style=flat-square)](https://fsy357.github.io/crawl-analyst/)
+[![Repo](https://img.shields.io/badge/源码-GitHub-151f1b?style=flat-square)](https://github.com/fsy357/crawl-analyst)
+[![License](https://img.shields.io/badge/license-MIT-8a8474?style=flat-square)](LICENSE)
+
 > Paste a public URL → Crawl4AI fetches it → the page is normalized into a table → LIDA generates charts, the LLM writes the summary. One page, async task queue, live SSE progress.
 
 | | |

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Crawl Analyst · 网页数据采集与分析系统</title>
+<meta name="description" content="输入一个公开网址，自动抓取、结构化成表，再出图表或文本摘要。Crawl4AI + LIDA + FastAPI + Celery。">
+<style>
+  :root{
+    --bg:#f1eadb; --panel:#fbf8f0; --ink:#151f1b; --muted:#6f6b5c;
+    --line:#e0d8c6; --hair:#d8cfba; --accent:#0d5a4a; --accent-deep:#0a4438;
+    --warn:#8a6a2f; --bad:#8f3f33;
+  }
+  *{box-sizing:border-box}
+  html{background:#f1eadb}
+  body{margin:0;color:var(--ink);background-color:#f1eadb;
+       background-image:radial-gradient(125% 75% at 50% -12%,#fbf7ea 0%,#f5efe1 48%,#f0e9d8 100%);
+       background-repeat:no-repeat;background-attachment:fixed;
+       font-family:"Segoe UI","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+       font-size:14px;line-height:1.62;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1000px;margin:0 auto;padding:48px 22px 72px}
+  .brand{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#8a8474;font-weight:600}
+  h1{font-size:34px;line-height:1.16;margin:12px 0 10px;letter-spacing:-1.1px;font-weight:700}
+  .lead{color:var(--muted);font-size:14.5px;max-width:640px}
+  .links{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}
+  .btn{display:inline-block;text-decoration:none;font-size:13px;font-weight:600;padding:10px 18px;
+       border-radius:5px;border:1px solid transparent;transition:.15s}
+  .btn.primary{background:var(--accent);color:#fdfcf8;box-shadow:0 2px 8px rgba(13,90,74,.22)}
+  .btn.primary:hover{background:var(--accent-deep);transform:translateY(-1px)}
+  .btn.ghost{background:#fffefb;color:var(--accent);border-color:var(--hair)}
+  .btn.ghost:hover{border-color:var(--accent)}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:22px 24px;margin-top:26px}
+  h2{font-size:15px;font-weight:700;margin:0 0 4px}
+  h2 em{font-style:normal;color:#8a8474;font-weight:500;font-size:12px;margin-left:8px;letter-spacing:.03em}
+  .grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-top:16px}
+  .feat{border:1px solid #eee6d4;border-radius:5px;padding:14px 16px;background:#fffdf7}
+  .feat b{display:block;font-size:13px;margin-bottom:4px;color:#2b3a34}
+  .feat span{font-size:12.5px;color:#736e5f;line-height:1.6}
+  table{width:100%;border-collapse:collapse;font-size:12.8px;margin-top:14px}
+  th{text-align:left;color:#7a7464;font-weight:500;font-size:11px;letter-spacing:.04em;padding:8px 10px;background:#f3ede0}
+  td{padding:8px 10px;border-bottom:1px solid #efe8d8;vertical-align:top}
+  td.ok{color:var(--accent);font-weight:600;white-space:nowrap}
+  td.no{color:var(--bad);font-weight:600;white-space:nowrap}
+  td.mid{color:var(--warn);font-weight:600;white-space:nowrap}
+  code,kbd{font-family:"Cascadia Mono",Consolas,monospace;font-size:12px;background:#f4eee0;
+       border:1px solid #e6ddc9;border-radius:3px;padding:1px 5px;color:#4a4536}
+  pre{background:#16221e;color:#e6e2d6;border-radius:6px;padding:14px 16px;overflow-x:auto;
+      font-family:"Cascadia Mono",Consolas,monospace;font-size:12.2px;line-height:1.75;margin-top:14px}
+  pre code{background:none;border:0;padding:0;color:inherit}
+  .shot{width:100%;border:1px solid var(--line);border-radius:6px;display:block}
+  .shots{display:grid;grid-template-columns:1.3fr 1fr;gap:14px;margin-top:14px;align-items:start}
+  @media (max-width:760px){.shots{grid-template-columns:1fr}}
+  .note{font-size:12px;color:#8a8474;margin-top:8px}
+  .foot{border-top:1px solid var(--line);margin-top:34px;padding-top:18px;font-size:11.5px;color:#8e8878;line-height:1.9}
+  .foot b{color:#6b6656}
+  details.note2{margin-top:14px;font-size:12.5px;color:#6f6b5c}
+  details.note2 summary{cursor:pointer;color:var(--accent);font-weight:600;font-size:12.5px}
+  details.note2 p{margin:8px 0 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="brand">Crawl · Analyze</div>
+  <h1>网页数据采集与分析系统</h1>
+  <p class="lead">输入一个公开网址，自动抓取、结构化成表，再出图表或文本摘要。抓取用 Crawl4AI，分析用 LIDA，调度是 Celery + Redis，界面是 FastAPI + 单页 HTML。</p>
+
+  <div class="links">
+    <a class="btn primary" href="https://github.com/fsy357/crawl-analyst">GitHub 仓库 / 源码</a>
+    <a class="btn ghost" href="#start">三步本地跑起来</a>
+  </div>
+
+  <div class="card">
+    <h2>它做什么 <em>一条流水线，三种入口，同一套输出</em></h2>
+    <pre><code>网址 ──► 抓取（Crawl4AI / 直连 JSON 接口）
+     ──► 结构化（分层适配器 + 规则兜底）
+     ──► 落库（DuckDB）
+     ──► 分析（LIDA 出图 / 大模型只写摘要）
+     ──► 前端（图表 + 数据预览 + 历史 + 定时监控）</code></pre>
+
+    <div class="grid3">
+      <div class="feat"><b>确定性清洗</b><span>价格 / 评分 / 评论 / 链接按规则抽，不靠模型编事实，同一页面重跑结果一致。</span></div>
+      <div class="feat"><b>JSON 接口直取</b><span>网址返回 JSON 时跳过浏览器渲染，直接转 DataFrame，比解析页面稳得多。</span></div>
+      <div class="feat"><b>异步不阻塞</b><span>Celery + Redis 排队，任务分「抓取 / 分析」两阶段，SSE 实时回推进度。</span></div>
+      <div class="feat"><b>自动出图</b><span>留空分析目标则由模型按数据结构决定图表；也可手写要什么图。</span></div>
+      <div class="feat"><b>定时监控</b><span>每 5 / 30 / 60 分钟自动重跑并留快照，页面更新就跟着更新。</span></div>
+      <div class="feat"><b>安全边界</b><span>URL 校验、三档限流、空壳页识别，只抓公开内容，不碰登录态。</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>界面 <em>输网址 → 自动爬 → 出图或摘要</em></h2>
+    <div class="shots">
+      <img class="shot" src="./images/ui_home_card.png" alt="首页">
+      <img class="shot" src="./images/ui_chart_card.png" alt="抓取结果与图表">
+    </div>
+    <p class="note">截图来自本地真实运行：微博热搜 JSON 接口 52 行 → 标签话题数量分布图。</p>
+  </div>
+
+  <div class="card">
+    <h2>哪些网址能抓，哪些不能</h2>
+    <table>
+      <tr><th style="width:64px"></th><th>站点类型</th><th>结果</th></tr>
+      <tr><td class="ok">✅ 能</td><td>不需要登录的公开页面（中图网、books.toscrape、少数派、arXiv）</td><td>抽成表 + 出图</td></tr>
+      <tr><td class="ok">✅ 能</td><td>公开 JSON 接口（微博热搜、GitHub 搜索）</td><td>直接转表 + 出图</td></tr>
+      <tr><td class="mid">⚠️ 部分</td><td>单篇长文（没有列表结构）</td><td>正文摘要 + 段落统计</td></tr>
+      <tr><td class="no">❌ 不能</td><td>淘宝 / 京东 / 拼多多 / 小红书 / 微博搜索页</td><td>只抓到 2KB 左右的 JS 空壳</td></tr>
+    </table>
+    <details class="note2">
+      <summary>为什么登录型站点抓不到？</summary>
+      <p>它们对匿名请求返回纯 JS 外壳，可见文字为 0，内容要拿到登录后的 Cookie 才渲染。本项目<b>不做 Cookie 注入、不打码、不伪造指纹</b>——那是绕过站点安全机制，属于合规红线。合规路径只有官方开放平台 API。</p>
+    </details>
+
+    <details class="note2">
+      <summary>JSON 接口是什么，怎么自己找？</summary>
+      <p>网址里带 <code>/ajax/</code>、<code>/api/</code>，浏览器打开满屏是 <code>{ }</code> 的，就是接口。找法：目标页面 → F12 → 网络 → 筛 Fetch/XHR → 看 Preview 是 <code>{...}</code> 的那条 → 标头里抄「请求 URL」。</p>
+      <p>例子：<code>https://weibo.com/ajax/side/hotSearch</code>（该接口校验 Referer，代码里已自动补同站点 Referer）；<code>https://api.github.com/search/repositories?q=crawler+language:python&amp;sort=stars&amp;per_page=50</code>。</p>
+    </details>
+  </div>
+
+  <div class="card" id="start">
+    <h2>三步跑起来 <em>Windows / Python 3.11+ / 约 2GB 内存</em></h2>
+    <pre><code>git clone https://github.com/fsy357/crawl-analyst.git
+cd crawl-analyst
+
+pip install -r requirements.txt
+playwright install chromium
+
+copy .env.example .env      # 填 LLM_API_KEY
+start_all.cmd              # Redis :6380 + Celery + FastAPI :8000</code></pre>
+    <p class="note">打开 <code>http://127.0.0.1:8000/</code>。关闭用 <code>stop_all.cmd</code>；需要临时公网演示链接就双击 <code>share_demo.cmd</code>。</p>
+    <p class="note">Redis / Playwright / Crawl4AI 的路径都在 <code>start_all.cmd</code> 里用环境变量或相对目录解析，<b>不写死绝对路径</b>。</p>
+  </div>
+
+  <div class="foot">
+    <b>技术栈</b>：Crawl4AI · LIDA · FastAPI · Celery + Redis · DuckDB · DeepSeek ／ <b>协议</b>：MIT ／ <b>作者</b>：<a href="https://github.com/fsy357" style="color:#0d5a4a">@fsy357</a><br>
+    <b>合规声明</b>：个人学习项目，不做商业数据服务。只抓公开内容，遵守 robots.txt 与站点频率限制，不抓需登录、付费或明确禁止抓取的内容，不留存内容镜像。<br>
+    本页只是介绍页；在线交互版需本地运行（或开发者临时开隧道演示）。
+  </div>
+
+</div>
+</body>
+</html>
